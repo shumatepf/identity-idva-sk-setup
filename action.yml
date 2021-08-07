@@ -32,6 +32,11 @@ inputs:
     description: 'The SK secrets used during the vars file generation.'
     required: true
 
+  standard-deployment:
+    description: 'Perform a standard "cf push --vars-file vars.yaml --strategy rolling"'
+    required: false
+    default: false
+
 runs:
   using: "composite"
   steps:
@@ -89,3 +94,11 @@ runs:
           # sed formats yaml value with proper indentation
           echo "$SK_SECRETS" | sed 's/^/  /'
         } > ${{ inputs.app-directory }}/vars.yaml
+
+    - name: Perform Standard Deployment
+      shell: bash
+      run: |
+        if [[ ${{ inputs.standard-deployment }} == "true" ]]; then
+          cd ${{ inputs.app-directory }}
+          cf push --vars-file vars.yaml --strategy rolling
+        fi
