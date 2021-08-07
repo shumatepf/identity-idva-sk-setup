@@ -1,0 +1,126 @@
+---
+name: 'SK Setup'
+
+description: |
+  Performs the deployment steps common to all SK microservices within GIVE.
+
+inputs:
+  cf-username:
+    description: 'CloudFoundry username to authenticate with'
+    required: true
+
+  cf-password:
+    description: 'CloudFoundry password to authenticate with'
+    required: true
+
+  cf-org:
+    description: 'CloudFoundry Organization to target'
+    required: true
+
+  aws-access-key-id:
+    description: 'AWS Access Key Id to use for S3 downloads.'
+    required: true
+
+  aws-secret-access-key:
+    description: 'AWS Secret Access Key to use for S3 downloads'
+    required: true
+
+  require-redis:
+    description: 'Boolean indicating whether to ensure sk-redis is available before deployment.'
+    required: false
+    default: false
+
+  require-postgres:
+    description: 'Boolean indicating whether to ensure sk-postgres is available before deployment.'
+    required: false
+    default: false
+
+  require-elasticsearch:
+    description: 'Boolean indicating whether to ensure sk-elasticsearch is available before deployment.'
+    required: false
+    default: false
+
+  s3-url:
+    description: 'The S3 URL for the SK app files'
+    required: true
+
+  app-directory:
+    description: 'The directory containing the files relevant to the microservice being deployed.'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: 18F/identity-give-cf-setup@v2
+      id: cf-setup
+      with:
+        cf-username: ${{ inputs.cf-username }}
+        cf-password: ${{ inputs.cf-password }}
+        cf-org: ${{ inputs.cf-org }}
+
+    - name: Ensure Redis Available
+      shell: bash
+      run: |
+        if [[ ${{ inputs.require-redis }} == "true" ]]; then
+          echo "::group::Ensure Redis Available"
+          ${{ github.action_path }}/ensure_service_available.sh -c aws-elasticache-redis redis-dev sk-redis
+          echo "::endgroup::"
+        fi
+
+    - name: Ensure Postgres Available
+      shell: bash
+      run: |
+        if [[ ${{ inputs.require-postgres }} == "true" ]]; then
+          echo "::group::Ensure Postgres Available"
+          ${{ github.action_path }}/ensure_service_available.sh -c aws-rds medium-psql sk-postgres
+          echo "::endgroup::"
+        fi
+
+    - name: Ensure Elasticsearch Available
+      shell: bash
+      run: |
+        if [[ ${{ inputs.require-elasticsearch }} == "true" ]]; then
+          echo "::group::Ensure Elasticsearch Available"
+          ${{ github.action_path }}/ensure_service_available.sh -c aws-elasticsearch es-dev sk-elasticsearch
+          echo "::endgroup::"
+        fi
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: us-west-2
+
+    - name: Download app file with AWS CLI
+      shell: bash
+      run: |
+        app_version=$(cat ${{ inputs.app-directory }}/version)
+        full_s3_url="${{ inputs.s3-url }}/$app_version"
+        aws s3 sync --only-show-errors "$full_s3_url" ${{ inputs.app-directory }}
+
+    - name: Validate downloaded binary
+      shell: bash
+      run: |
+        cd ${{ inputs.app-directory }}
+        sha256sum -c hash
+        chmod +x sk-app
+
+    - name: Set SK Secrets Name
+      shell: bash
+      run: |
+        target_env_upper=${{ steps.cf-setup.outputs.target-environment-upper }}
+        echo "SK_SECRETS_NAME=SK_SECRETS_$target_env_upper" >> $GITHUB_ENV
+
+    - name: Write SingularKey secrets to CF vars file
+      env:
+        SK_SECRETS: ${{ secrets[env.SK_SECRETS_NAME] }}
+      run: |
+        # Ensure the secret is valid JSON
+        echo "$SK_SECRETS" | jq empty
+        {
+          echo "---"
+          echo "SK_SECRETS: |"
+          # sed formats yaml value with proper indentation
+          echo "$SK_SECRETS" | sed 's/^/  /'
+        } > ${{ inputs.app-directory }}/vars.yaml
