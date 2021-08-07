@@ -76,12 +76,6 @@ runs:
         sha256sum -c hash
         chmod +x sk-app
 
-    - name: Set SK Secrets Name
-      shell: bash
-      run: |
-        target_env_upper=${{ steps.cf-setup.outputs.target-environment-upper }}
-        echo "SK_SECRETS_NAME=SK_SECRETS_$target_env_upper" >> $GITHUB_ENV
-
     - name: Write SingularKey secrets to CF vars file
       env:
         SK_SECRETS: ${{ inputs.sk-secrets }}
