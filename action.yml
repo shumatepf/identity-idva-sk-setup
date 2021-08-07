@@ -115,6 +115,7 @@ runs:
     - name: Write SingularKey secrets to CF vars file
       env:
         SK_SECRETS: ${{ secrets[env.SK_SECRETS_NAME] }}
+      shell: bash
       run: |
         # Ensure the secret is valid JSON
         echo "$SK_SECRETS" | jq empty
