@@ -5,18 +5,6 @@ description: |
   Performs the deployment steps common to all SK microservices within GIVE.
 
 inputs:
-  cf-username:
-    description: 'CloudFoundry username to authenticate with'
-    required: true
-
-  cf-password:
-    description: 'CloudFoundry password to authenticate with'
-    required: true
-
-  cf-org:
-    description: 'CloudFoundry Organization to target'
-    required: true
-
   aws-access-key-id:
     description: 'AWS Access Key Id to use for S3 downloads.'
     required: true
@@ -48,16 +36,13 @@ inputs:
     description: 'The directory containing the files relevant to the microservice being deployed.'
     required: true
 
+  sk-secrets:
+    description: 'The SK secrets used during the vars file generation.'
+    required: true
+
 runs:
   using: "composite"
   steps:
-    - uses: 18F/identity-give-cf-setup@v2
-      id: cf-setup
-      with:
-        cf-username: ${{ inputs.cf-username }}
-        cf-password: ${{ inputs.cf-password }}
-        cf-org: ${{ inputs.cf-org }}
-
     - name: Ensure Redis Available
       shell: bash
       run: |
@@ -114,7 +99,7 @@ runs:
 
     - name: Write SingularKey secrets to CF vars file
       env:
-        SK_SECRETS: ${{ secrets[env.SK_SECRETS_NAME] }}
+        SK_SECRETS: ${{ inputs.sk-secrets }}
       shell: bash
       run: |
         # Ensure the secret is valid JSON
