@@ -37,15 +37,26 @@ inputs:
     required: false
     default: false
 
+  target-environment:
+    description: 'String indicating the targeted space (dev/test/prod).'
+    required: false
+    default: dev
+
 runs:
   using: "composite"
   steps:
     - name: Ensure Redis Available
       shell: bash
       run: |
+        redis_instance_size="redis-dev"
+
+        if [[ ${{ inputs.target-environment }} == "prod" ]]; then
+          redis_instance_size="redis-3node"
+        fi
+
         if [[ ${{ inputs.require-redis }} == "true" ]]; then
           echo "::group::Ensure Redis Available"
-          ${{ github.action_path }}/ensure_service_available.sh -c aws-elasticache-redis redis-dev sk-redis
+          ${{ github.action_path }}/ensure_service_available.sh -c aws-elasticache-redis "$redis_instance_size" sk-redis
           echo "::endgroup::"
         fi
 
@@ -61,9 +72,15 @@ runs:
     - name: Ensure Elasticsearch Available
       shell: bash
       run: |
+        elasticsearch_instance_size="es-dev"
+
+        if [[ ${{ inputs.target-environment }} == "prod" ]]; then
+          elasticsearch_instance_size="es-medium"
+        fi
+
         if [[ ${{ inputs.require-elasticsearch }} == "true" ]]; then
           echo "::group::Ensure Elasticsearch Available"
-          ${{ github.action_path }}/ensure_service_available.sh -c aws-elasticsearch es-dev sk-elasticsearch
+          ${{ github.action_path }}/ensure_service_available.sh -c aws-elasticsearch "$elasticsearch_instance_size" sk-elasticsearch
           echo "::endgroup::"
         fi
 
