@@ -47,6 +47,11 @@ inputs:
     required: false
     default: dev
 
+  disable-executable:
+    description: 'Boolean indicating whether to disable adding executable permissions to downloaded binaries.'
+    required: false
+    default: false
+
 runs:
   using: "composite"
   steps:
@@ -96,7 +101,9 @@ runs:
       run: |
         cd ${{ inputs.app-directory }}
         sha256sum -c hash
-        chmod +x sk-app
+        if [[ ! ${{ inputs.disable-executable }} == "true" ]]; then
+          chmod +x sk-app
+        fi
 
     - name: Write SingularKey secrets to CF vars file
       env:
