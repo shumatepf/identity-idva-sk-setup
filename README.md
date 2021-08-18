@@ -1,10 +1,10 @@
-# GIVE SK Deployment Setup
+# IDVA SK Deployment Setup
 This action performs the deployment steps common to all SK microservices
-within GIVE.
+within IDVA.
 
 # Usage
 ```yaml
-- uses: 18F/identity-give-sk-setup@v1
+- uses: 18F/identity-idva-sk-setup@v1
   with:
     require-redis: "true" # Each 'require-<x>' parameter is optional
     require-postgres: "true"

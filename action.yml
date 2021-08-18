@@ -2,7 +2,7 @@
 name: 'SK Setup'
 
 description: |
-  Performs the deployment steps common to all SK microservices within GIVE.
+  Performs the deployment steps common to all SK microservices within IDVA.
 
 inputs:
   require-redis:
